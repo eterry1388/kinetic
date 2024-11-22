@@ -16,10 +16,17 @@
     <%= form.text_field :title %>
   </div>
 
-  <div>
-    <%= form.label :description, style: "display: block" %>
-    <%= form.textarea :description %>
-  </div>
+  <%= tag.div(style: "display: flex;", data: { controller: "markdown" }) do %>
+    <div style="flex: 1; padding-right: 10px;">
+      <%= form.label :description, style: "display: block" %>
+      <%= form.textarea :description, data: { markdown_target: "input" }, rows: 30 %>
+    </div>
+
+    <div style="flex: 1; padding-left: 10px;">
+      <%= form.label :preview, "Preview", style: "display: block" %>
+      <%= tag.div(class: "preview", data: { markdown_target: "output" }) %>
+    </div>
+  <% end %>
 
   <div>
     <%= form.submit %>

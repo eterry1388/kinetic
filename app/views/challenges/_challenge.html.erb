@@ -4,9 +4,7 @@
     <%= challenge.title %>
   </p>
 
-  <p>
-    <strong>Description:</strong>
-    <%= challenge.description %>
-  </p>
-
+  <%= tag.div(data: { controller: "markdown", markdown_input_value: challenge.description }) do %>
+    <%= tag.div(data: { markdown_target: "output" }) %>
+  <% end %>
 </div>
