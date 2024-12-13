@@ -1,0 +1,83 @@
+<html>
+  <head>
+    <style>
+      body {
+        margin: 0;
+        overflow: hidden;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        background-color: #222;
+      }
+
+      canvas {
+        display: block;
+      }
+    </style>
+  </head>
+
+  <body>
+    <canvas id="canvas"></canvas>
+
+    <script>
+      const fps = 60;
+      const canvas = document.getElementById("canvas");
+      const ctx = canvas.getContext("2d");
+
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+
+      const circle = {
+        x: canvas.width / 2,
+        y: canvas.height / 2,
+        radius: 40,
+        color: "green",
+        speed: 10
+      };
+
+      const keys = {
+        ArrowLeft: false,
+        ArrowRight: false,
+        ArrowUp: false,
+        ArrowDown: false,
+      };
+
+      window.addEventListener("keydown", (event) => {
+        if (keys.hasOwnProperty(event.key)) {
+          keys[event.key] = true;
+        }
+      });
+
+      window.addEventListener("keyup", (event) => {
+        if (keys.hasOwnProperty(event.key)) {
+          keys[event.key] = false;
+        }
+      });
+
+      function update() {
+        if (keys.ArrowLeft) circle.x -= circle.speed;
+        if (keys.ArrowRight) circle.x += circle.speed;
+        if (keys.ArrowUp) circle.y -= circle.speed;
+        if (keys.ArrowDown) circle.y += circle.speed;
+      }
+
+      function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        ctx.beginPath();
+        ctx.arc(circle.x, circle.y, circle.radius, 0, Math.PI * 2);
+        ctx.fillStyle = circle.color;
+        ctx.fill();
+        ctx.closePath();
+      }
+
+      function gameLoop() {
+        update();
+        draw();
+      }
+
+      setInterval(gameLoop, 1000 / fps);
+    </script>
+  </body>
+</html>
