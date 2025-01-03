@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_01_03_211228) do
+ActiveRecord::Schema[8.0].define(version: 2025_01_03_213221) do
   create_table "challenges", force: :cascade do |t|
     t.string "title"
     t.text "description"
@@ -22,5 +22,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_01_03_211228) do
     t.string "title"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "order", default: 0
+    t.boolean "completed", default: false
   end
 end

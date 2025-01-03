@@ -1,9 +1,14 @@
 class TodosController < ApplicationController
   before_action :set_todo, only: %i[ show edit update destroy ]
 
+  def sendit
+    ActionCable.server.broadcast("todo_channel", { todos: Todo.all.to_json })
+    render json: { status: "ok" }
+  end
+
   # GET /todos or /todos.json
   def index
-    @todos = Todo.all
+    @todos = Todo.all.order(:completed, :order)
   end
 
   # GET /todos/1 or /todos/1.json
@@ -68,6 +73,6 @@ class TodosController < ApplicationController
 
     # Only allow a list of trusted parameters through.
     def todo_params
-      params.expect(todo: [ :title ])
+      params.expect(todo: [ :title, :order, :completed ])
     end
 end

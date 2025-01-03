@@ -17,6 +17,16 @@
   </div>
 
   <div>
+    <%= form.label :order, style: "display: block" %>
+    <%= form.number_field :order %>
+  </div>
+
+  <div>
+    <%= form.label :completed, style: "display: block" %>
+    <%= form.check_box :completed %>
+  </div>
+
+  <div>
     <%= form.submit %>
   </div>
 <% end %>
