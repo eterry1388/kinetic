@@ -15,10 +15,12 @@ class Dot {
     this.color = Dot.color;
     this.growing = true;
     this.selected = false;
+    this.intent = null;
   }
 
-  select() {
+  select(intent) {
     this.selected = true;
+    this.intent = intent;
   }
 
   move(x, y) {
@@ -42,9 +44,6 @@ class Dot {
         this.ctx.lineTo(this.x - this.size, this.y + this.size);
         this.ctx.lineTo(this.x + this.size, this.y + this.size);
         this.ctx.closePath();
-        break;
-      case "line":
-        this.ctx.rect(this.x - this.size, this.y - this.size, this.size * 2, this.size * 2 * 5);
         break;
     }
 

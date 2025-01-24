@@ -30,12 +30,21 @@ function handleMouseDown(event) {
     }
   } else if (toolbar.mode === "move") {
     if (clickedDot) {
-      clickedDot.select();
+      clickedDot.select("move");
     } else {
       const selectedDot = dots.find(dot => dot.selected);
       if (selectedDot) {
         selectedDot.move(x, y);
       }
+    }
+  } else if (toolbar.mode === "connect") {
+    if (clickedDot) {
+      clickedDot.select("connect");
+    } else {
+      // const selectedDot = dots.find(dot => dot.selected);
+      // if (selectedDot) {
+      //   selectedDot.connect(x, y);
+      // }
     }
   }
 }
