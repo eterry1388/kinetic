@@ -2,6 +2,7 @@ class Toolbar {
   constructor(ctx) {
     this.ctx = ctx;
     this.mode = "add";
+    this.currentShape = "circle";
   }
 
   mouseDown(event) {
@@ -27,7 +28,14 @@ class Toolbar {
       this.ctx.fillStyle = "lightgray";
       this.ctx.fillRect(100, 0, 50, 50);
     }
+
+    this.ctx.fillStyle = "white";
+    this.ctx.font = "20px Arial";
+    const textWidth = this.ctx.measureText(`Shape: ${this.currentShape}`).width;
+    this.ctx.fillText(`Shape: ${this.currentShape}`, canvas.width - textWidth - 10, 30);
   }
 
-  update() {}
+  update(currentShape) {
+    this.currentShape = currentShape;
+  }
 }

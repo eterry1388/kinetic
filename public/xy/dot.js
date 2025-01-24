@@ -29,7 +29,25 @@ class Dot {
 
   draw() {
     this.ctx.beginPath();
-    this.ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+
+    switch (this.shape) {
+      case "circle":
+        this.ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        break;
+      case "square":
+        this.ctx.rect(this.x - this.size, this.y - this.size, this.size * 2, this.size * 2);
+        break;
+      case "triangle":
+        this.ctx.moveTo(this.x, this.y - this.size);
+        this.ctx.lineTo(this.x - this.size, this.y + this.size);
+        this.ctx.lineTo(this.x + this.size, this.y + this.size);
+        this.ctx.closePath();
+        break;
+      case "line":
+        this.ctx.rect(this.x - this.size, this.y - this.size, this.size * 2, this.size * 2 * 5);
+        break;
+    }
+
     this.ctx.fillStyle = this.color;
     this.ctx.fill();
   }
