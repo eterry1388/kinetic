@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Solvable Maze with Correct Borders</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: #000; /* black background */
+    }
+    canvas {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+<script>
+const fps = 60;
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+/**
+ * Maze class
+ * - Creates the start and goal.
+ * - Maintains an array of paths.
+ * - Only marks the maze as solvable when the MAIN path reaches the goal.
+ * - When adding branch paths, picks a starting cell (if possible) that hasn’t already been used.
+ */
+class Maze {
+  static mazeSize = 20;             // Maze dimensions (20x20 cells)
+  static maxPaths = 145;             // Maximum number of branch paths
+  static branchingProbability = 0.03;
+  static turnProbability = 0.3;
+  static mazeSpeed = 1;            // Delay (ms) between updates
+  static pathWidth = 0;             // Set dynamically based on canvas size
+
+  constructor() {
+    this.startPoint = this.createStartPoint();
+    this.endPoint = this.createEndPoint();
+    this.paths = [];
+    this.solvable = false;         // Only set true when the main path connects start → end
+    this.lastUpdate = Date.now();
+    this.branchStarts = new Set(); // Used to avoid reusing the same branch starting cell
+
+    // Create the main (first) path from the start.
+    this.addPath(true, [this.startPoint]);
+  }
+
+  addPath(mainPath, points = []) {
+    const path = new Path(this, mainPath, this.endPoint, points);
+    this.paths.push(path);
+    return path;
+  }
+
+  createStartPoint() {
+    // Randomly choose an edge cell as the start.
+    const initialA = Math.floor(Math.random() * Maze.mazeSize);
+    const initialB = Math.random() < 0.5 ? 0 : Maze.mazeSize - 1;
+    return Math.random() < 0.5 ? [initialA, initialB] : [initialB, initialA];
+  }
+
+  createEndPoint() {
+    // Place the goal on the opposite edge from the start.
+    if (this.startPoint[0] === 0) {
+      return [Maze.mazeSize - 1, Math.floor(Math.random() * Maze.mazeSize)];
+    } else if (this.startPoint[0] === Maze.mazeSize - 1) {
+      return [0, Math.floor(Math.random() * Maze.mazeSize)];
+    } else if (this.startPoint[1] === 0) {
+      return [Math.floor(Math.random() * Maze.mazeSize), Maze.mazeSize - 1];
+    } else if (this.startPoint[1] === Maze.mazeSize - 1) {
+      return [Math.floor(Math.random() * Maze.mazeSize), 0];
+    }
+  }
+
+  update() {
+    if (Date.now() - this.lastUpdate < Maze.mazeSpeed) return;
+    this.lastUpdate = Date.now();
+
+    // Update each path.
+    this.paths.forEach(path => path.update());
+
+    // Only mark the maze as solvable when the MAIN path reaches the goal.
+    if (!this.solvable && this.paths[0].solution) {
+      this.solvable = true;
+      console.log("Main path reached the goal!");
+    }
+
+    // Once solved, if all paths are done and we haven’t reached max paths, add a branch.
+    if (this.solvable && this.paths.length < Maze.maxPaths && this.paths.every(p => p.done)) {
+      // Choose a starting point from the main path that hasn’t already been used.
+      let available = this.paths[0].points.filter(p => {
+        const key = `${p[0]},${p[1]}`;
+        return !this.branchStarts.has(key);
+      });
+      let branchStart;
+      if (available.length > 0) {
+        branchStart = available[Math.floor(Math.random() * available.length)];
+        this.branchStarts.add(`${branchStart[0]},${branchStart[1]}`);
+      } else {
+        branchStart = this.paths[0].randomPoint();
+      }
+      this.addPath(false, [branchStart]);
+    }
+
+    if (this.solvable && this.paths.length >= Maze.maxPaths) {
+      console.log("DONE!");
+    }
+  }
+
+  draw(ctx) {
+    // Fill entire canvas with black (the walls).
+    ctx.fillStyle = "black";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Let each path “carve” its corridor.
+    this.paths.forEach(path => path.draw(ctx));
+
+    // Draw the start (green) and goal (red) markers.
+    ctx.fillStyle = "green";
+    ctx.fillRect(
+      this.startPoint[0] * Maze.pathWidth,
+      this.startPoint[1] * Maze.pathWidth,
+      Maze.pathWidth,
+      Maze.pathWidth
+    );
+    ctx.fillStyle = "red";
+    ctx.fillRect(
+      this.endPoint[0] * Maze.pathWidth,
+      this.endPoint[1] * Maze.pathWidth,
+      Maze.pathWidth,
+      Maze.pathWidth
+    );
+  }
+}
+
+/**
+ * Path class
+ * - Holds a sequence of cells (points) forming a continuous route.
+ * - The main path (mainPath === true) will keep backtracking until it reaches the goal.
+ * - In drawing, for each cell we compute “direct connections” (neighbors that are consecutive in the path).
+ *   Then for each side we draw a border if the neighbor isn’t directly connected or is claimed by another path.
+ */
+class Path {
+  constructor(maze, mainPath, goalPoint, points = []) {
+    this.maze = maze;
+    this.mainPath = mainPath;
+    this.goalPoint = goalPoint;
+    this.points = points;
+    this.blacklist = [];
+    this.solution = false;
+    this.done = false;
+  }
+
+  addPoint(x, y) {
+    this.points.push([x, y]);
+  }
+
+  lastPoint(ago = 1) {
+    return this.points[this.points.length - ago];
+  }
+
+  randomPoint() {
+    return this.points[Math.floor(Math.random() * this.points.length)];
+  }
+
+  possibleNextPoints() {
+    return this.nextPointCandidates().filter(point =>
+      point[0] >= 0 && point[0] < Maze.mazeSize &&
+      point[1] >= 0 && point[1] < Maze.mazeSize &&
+      this.maze.paths.every(path =>
+        !path.points.some(p => p[0] === point[0] && p[1] === point[1])
+      ) &&
+      this.blacklist.every(p => p[0] !== point[0] || p[1] !== point[1])
+    );
+  }
+
+  nextPointCandidates() {
+    const lp = this.lastPoint();
+    return [
+      [lp[0] - 1, lp[1]],
+      [lp[0] + 1, lp[1]],
+      [lp[0], lp[1] - 1],
+      [lp[0], lp[1] + 1]
+    ];
+  }
+
+  straightPoint() {
+    const lp = this.lastPoint();
+    const secondLp = this.lastPoint(2);
+    if (!secondLp) return null;
+    const dx = lp[0] - secondLp[0];
+    const dy = lp[1] - secondLp[1];
+    return [lp[0] + dx, lp[1] + dy];
+  }
+
+  nextPoint() {
+    // Try to go straight with probability (1 - turnProbability)
+    if (Math.random() > Maze.turnProbability) {
+      const sp = this.straightPoint();
+      if (sp) {
+        const candidate = this.possibleNextPoints().find(
+          p => p[0] === sp[0] && p[1] === sp[1]
+        );
+        if (candidate) return candidate;
+      }
+    }
+    const possibilities = this.possibleNextPoints();
+    if (possibilities.length === 0) return null;
+    return possibilities[Math.floor(Math.random() * possibilities.length)];
+  }
+
+  forward() {
+    const next = this.nextPoint();
+    if (!next) return;
+    this.points.push(next);
+    // For the main path, only mark it solved when the goal is reached.
+    if (!this.solution &&
+        next[0] === this.goalPoint[0] &&
+        next[1] === this.goalPoint[1] &&
+        this.mainPath) {
+      this.solution = true;
+      this.done = true;
+      console.log("Main path reached the goal!");
+    }
+  }
+
+  reverse() {
+    if (this.points.length > 1) {
+      this.blacklist.push(this.points.pop());
+    } else {
+      this.done = true;
+    }
+  }
+
+  isDeadEnd() {
+    return this.possibleNextPoints().length === 0;
+  }
+
+  update() {
+    if (this.points.length === 0) return;
+    if (this.solution) return;
+
+    if (this.isDeadEnd()) {
+      // For branch paths, if the maze is already solved, stop.
+      // But the main path always backtracks so it keeps trying to reach the goal.
+      if (!this.mainPath && this.maze.solvable) {
+        this.done = true;
+        return;
+      }
+      this.reverse();
+      return;
+    }
+    this.forward();
+  }
+
+  draw(ctx) {
+    // Build a map of “direct connections” from consecutive cells.
+    // For every cell in this path, directConns.get(cellKey) will be a set of adjacent cells that are connected in the sequence.
+    const directConns = new Map();
+    for (let i = 0; i < this.points.length; i++) {
+      const key = `${this.points[i][0]},${this.points[i][1]}`;
+      directConns.set(key, new Set());
+    }
+    for (let i = 0; i < this.points.length - 1; i++) {
+      const keyA = `${this.points[i][0]},${this.points[i][1]}`;
+      const keyB = `${this.points[i+1][0]},${this.points[i+1][1]}`;
+      directConns.get(keyA).add(keyB);
+      directConns.get(keyB).add(keyA);
+    }
+
+    // Create a set of all cells in THIS path.
+    const currentSet = new Set(this.points.map(p => `${p[0]},${p[1]}`));
+
+    // For every cell in this path, fill it and then draw borders where needed.
+    this.points.forEach(([x, y]) => {
+      const key = `${x},${y}`;
+      // Use yellow for the main/solution path; white for branch paths.
+      ctx.fillStyle = (this.solution || this.mainPath) ? "white" : "white";
+      ctx.fillRect(x * Maze.pathWidth, y * Maze.pathWidth, Maze.pathWidth, Maze.pathWidth);
+
+      // Check each of the four directions.
+      const directions = [
+        { dx: 0, dy: -1 }, // top
+        { dx: 1, dy: 0 },  // right
+        { dx: 0, dy: 1 },  // bottom
+        { dx: -1, dy: 0 }  // left
+      ];
+      directions.forEach(dir => {
+        const nx = x + dir.dx;
+        const ny = y + dir.dy;
+        const neighborKey = `${nx},${ny}`;
+
+        // If out-of-bounds, always draw a border.
+        if (nx < 0 || nx >= Maze.mazeSize || ny < 0 || ny >= Maze.mazeSize) {
+          this.drawBorder(ctx, x, y, dir);
+          return;
+        }
+
+        // Is the neighbor in THIS path?
+        const inCurrent = currentSet.has(neighborKey);
+        // Is the neighbor a direct connection (i.e. consecutive in our sequence)?
+        const isDirect = directConns.get(key) && directConns.get(key).has(neighborKey);
+        // Check if any OTHER path covers this neighbor.
+        let inOther = false;
+        for (const otherPath of this.maze.paths) {
+          if (otherPath === this) continue;
+          const otherSet = new Set(otherPath.points.map(p => `${p[0]},${p[1]}`));
+          if (otherSet.has(neighborKey)) {
+            inOther = true;
+            break;
+          }
+        }
+        // Draw a border if:
+        //   - The neighbor is not in THIS path, OR
+        //   - The neighbor is in THIS path but not a direct connection (i.e. a loop), OR
+        //   - The neighbor is claimed by another path.
+        if (!inCurrent || !isDirect || inOther) {
+          this.drawBorder(ctx, x, y, dir);
+        }
+      });
+    });
+  }
+
+  drawBorder(ctx, x, y, dir) {
+    const px = x * Maze.pathWidth;
+    const py = y * Maze.pathWidth;
+    const s = Maze.pathWidth;
+    ctx.strokeStyle = "black";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    if (dir.dx === 0 && dir.dy === -1) { // top border
+      ctx.moveTo(px, py);
+      ctx.lineTo(px + s, py);
+    } else if (dir.dx === 1 && dir.dy === 0) { // right border
+      ctx.moveTo(px + s, py);
+      ctx.lineTo(px + s, py + s);
+    } else if (dir.dx === 0 && dir.dy === 1) { // bottom border
+      ctx.moveTo(px, py + s);
+      ctx.lineTo(px + s, py + s);
+    } else if (dir.dx === -1 && dir.dy === 0) { // left border
+      ctx.moveTo(px, py);
+      ctx.lineTo(px, py + s);
+    }
+    ctx.stroke();
+  }
+}
+
+const maze = new Maze();
+
+// Set up the canvas size.
+resizeCanvas();
+window.addEventListener("resize", resizeCanvas);
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  // Set the cell size so the maze fits vertically.
+  Maze.pathWidth = canvas.height / Maze.mazeSize;
+}
+
+function update() {
+  maze.update();
+}
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  maze.draw(ctx);
+}
+
+function gameLoop() {
+  update();
+  draw();
+}
+
+setInterval(gameLoop, 1000 / fps);
+</script>
+</body>
+</html>
