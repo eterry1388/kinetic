@@ -79,16 +79,13 @@ class Cell {
   }
 
   draw() {
-    // Only draw the cell if it has been visited.
     if (!this.visited) return;
     const x = this.i * cellSize;
     const y = this.j * cellSize;
 
-    // Fill the cell.
     ctx.fillStyle = settings.visitedColor;
     ctx.fillRect(x, y, cellSize, cellSize);
 
-    // Draw walls.
     ctx.strokeStyle = settings.wallColor;
     ctx.lineWidth = settings.wallWidth;
     if (this.walls[0]) {
@@ -157,17 +154,15 @@ function setupMaze() {
 function chooseStartEnd() {
   let start, end;
   if (Math.random() < 0.5) {
-    // Choose start on the top row and end on the bottom row.
     let startCol = Math.floor(Math.random() * cols);
-    start = grid[startCol]; // top row
+    start = grid[startCol];
     let endCol = Math.floor(Math.random() * cols);
-    end = grid[(rows - 1) * cols + endCol]; // bottom row
+    end = grid[(rows - 1) * cols + endCol];
   } else {
-    // Choose start on the left column and end on the right column.
     let startRow = Math.floor(Math.random() * rows);
-    start = grid[startRow * cols]; // left column
+    start = grid[startRow * cols];
     let endRow = Math.floor(Math.random() * rows);
-    end = grid[endRow * cols + (cols - 1)]; // right column
+    end = grid[endRow * cols + (cols - 1)];
   }
   startCell = start;
   endCell = end;
@@ -180,26 +175,25 @@ function drawMaze() {
     grid[i].draw();
   }
 
-  // Highlight the current cell during generation.
-  if (current) {
+  // Show animator cell only if maze generation is not complete.
+  if (!startCell && !endCell && current) {
     const x = current.i * cellSize;
     const y = current.j * cellSize;
     ctx.fillStyle = settings.currentColor;
     ctx.fillRect(x, y, cellSize, cellSize);
   }
 
-  // If maze generation is complete, draw the start and end markers.
+  // When complete, draw start and end cells as full-size squares.
   if (startCell && endCell) {
-    // Start marker.
     ctx.fillStyle = settings.startColor;
     const sx = startCell.i * cellSize;
     const sy = startCell.j * cellSize;
-    ctx.fillRect(sx + cellSize, sy + cellSize, cellSize, cellSize);
-    // End marker.
+    ctx.fillRect(sx, sy, cellSize, cellSize);
+
     ctx.fillStyle = settings.endColor;
     const ex = endCell.i * cellSize;
     const ey = endCell.j * cellSize;
-    ctx.fillRect(ex + cellSize, ey + cellSize, cellSize, cellSize);
+    ctx.fillRect(ex, ey, cellSize, cellSize);
   }
 }
 
@@ -211,7 +205,6 @@ function animate(time) {
   }
   lastStepTime = time;
 
-  // Perform one step of the maze generation.
   let next = current.checkNeighbors();
   if (next) {
     next.visited = true;
@@ -227,7 +220,6 @@ function animate(time) {
   if (stack.length > 0 || current.checkNeighbors()) {
     requestAnimationFrame(animate);
   } else {
-    // Maze generation is complete.
     chooseStartEnd();
     drawMaze();
     console.log("Maze generation complete!");
