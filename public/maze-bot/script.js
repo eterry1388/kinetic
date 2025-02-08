@@ -10,10 +10,9 @@ let startingPoint;
 let endingPoint;
 let player;
 let currentPath = [];
-let currentSegment = [];
 let possibleDeadSegment = [];
 const deadCells = []
-const paths = [];
+let reachedEnd = false;
 
 function resizeCanvas() {
   canvas.width = window.innerWidth;
@@ -25,13 +24,11 @@ window.addEventListener("resize", resizeCanvas);
 
 function update() {
   if (!player) return;
-  if (paths.length > 0) return;
+  if (reachedEnd) return;
 
-  let reachedEnd = movePlayer();
+  reachedEnd = movePlayer();
   if (reachedEnd) {
     console.log("Solved!");
-    paths.push(currentPath);
-    currentPath = [];
   }
 }
 
@@ -52,6 +49,18 @@ function draw() {
       ctx.fillRect(
         deadCell.x - (cellSize / 4),
         deadCell.y - (cellSize / 4),
+        cellSize / 2,
+        cellSize / 2,
+      );
+    });
+  }
+
+  if (currentPath.length > 0) {
+    ctx.fillStyle = "yellow";
+    currentPath.forEach(currentPathCell => {
+      ctx.fillRect(
+        currentPathCell.x - (cellSize / 4),
+        currentPathCell.y - (cellSize / 4),
         cellSize / 2,
         cellSize / 2,
       );
@@ -180,6 +189,7 @@ async function init() {
   // Initialize the player
   //
   player = { ...startingPoint };
+  currentPath.push({ x: player.x, y: player.y });
 }
 
 function movePlayer() {
@@ -193,9 +203,9 @@ function movePlayer() {
   }
 
   if (possibleDirections.length === 0) {
-    const lastNotDeadCellIndex = currentSegment.length - possibleDeadSegment.length - 1;
-    lastNotDeadCell = currentSegment[lastNotDeadCellIndex];
-    currentSegment = currentSegment.slice(0, lastNotDeadCellIndex);
+    const lastNotDeadCellIndex = currentPath.length - possibleDeadSegment.length - 1;
+    lastNotDeadCell = currentPath[lastNotDeadCellIndex];
+    currentPath = currentPath.slice(0, lastNotDeadCellIndex + 1);
 
     if (possibleDeadSegment.length > 0) {
       deadCells.push(...possibleDeadSegment);
@@ -218,7 +228,7 @@ function movePlayer() {
     player.y += cellSize;
   }
 
-  currentSegment.push({ x: player.x, y: player.y });
+  currentPath.push({ x: player.x, y: player.y });
 
   return (player.x === endingPoint.x && player.y === endingPoint.y);
 }
@@ -228,7 +238,7 @@ function findPossibleDirections() {
 
   // Right
   const newRightX = player.x + cellSize;
-  if ([...currentSegment, ...deadCells].filter(segment => segment.x === newRightX && segment.y === player.y).length === 0) {
+  if ([...currentPath, ...deadCells].filter(segment => segment.x === newRightX && segment.y === player.y).length === 0) {
     const rightCollision = verticalLines.filter(line => line.x1 > player.x && line.x1 <= newRightX && line.y1 <= player.y && line.y2 >= player.y);
     if (rightCollision.length === 0) {
       possibleDirections.push("right");
@@ -237,7 +247,7 @@ function findPossibleDirections() {
 
   // Left
   const newLeftX = player.x - cellSize;
-  if ([...currentSegment, ...deadCells].filter(segment => segment.x === newLeftX && segment.y === player.y).length === 0) {
+  if ([...currentPath, ...deadCells].filter(segment => segment.x === newLeftX && segment.y === player.y).length === 0) {
     const leftCollision = verticalLines.filter(line => line.x1 < player.x && line.x1 >= newLeftX && line.y1 <= player.y && line.y2 >= player.y);
     if (leftCollision.length === 0) {
       possibleDirections.push("left");
@@ -246,7 +256,7 @@ function findPossibleDirections() {
 
   // Up
   const newUpY = player.y - cellSize;
-  if ([...currentSegment, ...deadCells].filter(segment => segment.y === newUpY && segment.x === player.x).length === 0) {
+  if ([...currentPath, ...deadCells].filter(segment => segment.y === newUpY && segment.x === player.x).length === 0) {
     const upCollision = horizontalLines.filter(line => line.y1 < player.y && line.y1 >= newUpY && line.x1 <= player.x && line.x2 >= player.x);
     if (upCollision.length === 0) {
       possibleDirections.push("up");
@@ -255,7 +265,7 @@ function findPossibleDirections() {
 
   // Down
   const newDownY = player.y + cellSize;
-  if ([...currentSegment, ...deadCells].filter(segment => segment.y === newDownY && segment.x === player.x).length === 0) {
+  if ([...currentPath, ...deadCells].filter(segment => segment.y === newDownY && segment.x === player.x).length === 0) {
     const downCollision = horizontalLines.filter(line => line.y1 > player.y && line.y1 <= newDownY && line.x1 <= player.x && line.x2 >= player.x);
     if (downCollision.length === 0) {
       possibleDirections.push("down");
