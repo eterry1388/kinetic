@@ -1,10 +1,11 @@
 // Maze Settings!
 const showProcessOfSolvingMaze = false;
-const mazeFileName = "md-maze.svg";
+const mazeFileName = "maze-md.svg"; // Download from https://www.mazegenerator.net
 
 // Don't touch below :)
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
+let minX, minY, maxX, maxY;
 const lines = [];
 const horizontalLines = [];
 const verticalLines = [];
@@ -15,7 +16,7 @@ let endingPoint;
 let player;
 let currentPath = [];
 let possibleDeadSegment = [];
-const deadCells = []
+const deadCells = [];
 let reachedEnd = false;
 let bot;
 let botIndex = 0;
@@ -42,9 +43,15 @@ function update() {
 }
 
 function draw() {
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const s = Math.min(canvas.width / (maxX - minX), canvas.height / (maxY - minY));
+  const offsetX = (canvas.width - s * (maxX - minX)) / 2;
+  const offsetY = (canvas.height - s * (maxY - minY)) / 2;
+  ctx.setTransform(s, 0, 0, s, offsetX - s * minX, offsetY - s * minY);
+
   ctx.strokeStyle = "black";
-  ctx.lineWidth = 2;
+  ctx.lineWidth = 2 / s;
   lines.forEach(line => {
     ctx.beginPath();
     ctx.moveTo(line.x1, line.y1);
@@ -90,7 +97,7 @@ function draw() {
 
   if (botPath.length > 0) {
     ctx.strokeStyle = "blue";
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 2 / s;
     ctx.beginPath();
     ctx.moveTo(botPath[0].x, botPath[0].y);
     for (let i = 1; i < botPath.length; i++) {
@@ -140,7 +147,7 @@ async function init() {
   // Get lines from svg maze
   //
   const regex = /<line x1="(\d+)" y1="(\d+)" x2="(\d+)" y2="(\d+)" \/>/;
-  const svgContent = await (await fetch(mazeFileName)).text(); // TODO: Fetch from https://www.mazegenerator.net
+  const svgContent = await (await fetch(mazeFileName)).text();
   svgContent.split("\n").forEach(line => {
     const match = line.match(regex);
     if (match) {
@@ -152,10 +159,10 @@ async function init() {
   //
   // Figure out the gaps for the start and end positions
   //
-  const minX = Math.min(...lines.map(line => line.x1));
-  const minY = Math.min(...lines.map(line => line.y1));
-  const maxX = Math.max(...lines.map(line => line.x2));
-  const maxY = Math.max(...lines.map(line => line.y2));
+  minX = Math.min(...lines.map(line => line.x1));
+  minY = Math.min(...lines.map(line => line.y1));
+  maxX = Math.max(...lines.map(line => line.x2));
+  maxY = Math.max(...lines.map(line => line.y2));
 
   const xMinBorders = lines.filter(line => (line.x1 === minX && line.x2 === minX)).sort((a, b) => a.y1 - b.y1);
   const xMaxBorders = lines.filter(line => (line.x1 === maxX && line.x2 === maxX)).sort((a, b) => a.y1 - b.y1);
