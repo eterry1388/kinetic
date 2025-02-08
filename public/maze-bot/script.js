@@ -9,6 +9,10 @@ let cellSize = 0;
 let startingPoint;
 let endingPoint;
 let player;
+let currentPath = [];
+let currentSegment = [];
+let possibleDeadSegment = [];
+const deadCells = []
 const paths = [];
 
 function resizeCanvas() {
@@ -23,8 +27,12 @@ function update() {
   if (!player) return;
   if (paths.length > 0) return;
 
-  paths.push(findSolvablePath());
-  console.log("Solved!");
+  let reachedEnd = movePlayer();
+  if (reachedEnd) {
+    console.log("Solved!");
+    paths.push(currentPath);
+    currentPath = [];
+  }
 }
 
 function draw() {
@@ -37,6 +45,18 @@ function draw() {
     ctx.lineTo(line.x2, line.y2);
     ctx.stroke();
   });
+
+  if (deadCells.length > 0) {
+    deadCells.forEach(deadCell => {
+      ctx.fillStyle = "black";
+      ctx.fillRect(
+        deadCell.x - (cellSize / 4),
+        deadCell.y - (cellSize / 4),
+        cellSize / 2,
+        cellSize / 2,
+      );
+    });
+  }
 
   if (startingPoint) {
     ctx.fillStyle = "green";
@@ -159,20 +179,33 @@ async function init() {
   //
   // Initialize the player
   //
-  player = startingPoint;
-}
-
-function findSolvablePath() {
-  const path = [];
-  while (!movePlayer()) {
-    path.push({ x: player.x, y: player.y });
-  }
-
-  return path;
+  player = { ...startingPoint };
 }
 
 function movePlayer() {
+  let lastNotDeadCell = null;
   const possibleDirections = findPossibleDirections();
+
+  if (possibleDirections.length < 2) {
+    possibleDeadSegment.push({ x: player.x, y: player.y });
+  } else {
+    possibleDeadSegment = [];
+  }
+
+  if (possibleDirections.length === 0) {
+    const lastNotDeadCellIndex = currentSegment.length - possibleDeadSegment.length - 1;
+    lastNotDeadCell = currentSegment[lastNotDeadCellIndex];
+    currentSegment = currentSegment.slice(0, lastNotDeadCellIndex);
+
+    if (possibleDeadSegment.length > 0) {
+      deadCells.push(...possibleDeadSegment);
+      possibleDeadSegment = [];
+    }
+
+    player = { ...lastNotDeadCell };
+    return false;
+  }
+
   const direction = possibleDirections[Math.floor(Math.random() * possibleDirections.length)];
 
   if (direction === "right") {
@@ -185,6 +218,8 @@ function movePlayer() {
     player.y += cellSize;
   }
 
+  currentSegment.push({ x: player.x, y: player.y });
+
   return (player.x === endingPoint.x && player.y === endingPoint.y);
 }
 
@@ -193,30 +228,38 @@ function findPossibleDirections() {
 
   // Right
   const newRightX = player.x + cellSize;
-  const rightCollision = verticalLines.filter(line => line.x1 > player.x && line.x1 <= newRightX && line.y1 <= player.y && line.y2 >= player.y);
-  if (rightCollision.length === 0) {
-    possibleDirections.push("right");
+  if ([...currentSegment, ...deadCells].filter(segment => segment.x === newRightX && segment.y === player.y).length === 0) {
+    const rightCollision = verticalLines.filter(line => line.x1 > player.x && line.x1 <= newRightX && line.y1 <= player.y && line.y2 >= player.y);
+    if (rightCollision.length === 0) {
+      possibleDirections.push("right");
+    }
   }
 
   // Left
   const newLeftX = player.x - cellSize;
-  const leftCollision = verticalLines.filter(line => line.x1 < player.x && line.x1 >= newLeftX && line.y1 <= player.y && line.y2 >= player.y);
-  if (leftCollision.length === 0) {
-    possibleDirections.push("left");
+  if ([...currentSegment, ...deadCells].filter(segment => segment.x === newLeftX && segment.y === player.y).length === 0) {
+    const leftCollision = verticalLines.filter(line => line.x1 < player.x && line.x1 >= newLeftX && line.y1 <= player.y && line.y2 >= player.y);
+    if (leftCollision.length === 0) {
+      possibleDirections.push("left");
+    }
   }
 
   // Up
   const newUpY = player.y - cellSize;
-  const upCollision = horizontalLines.filter(line => line.y1 < player.y && line.y1 >= newUpY && line.x1 <= player.x && line.x2 >= player.x);
-  if (upCollision.length === 0) {
-    possibleDirections.push("up");
+  if ([...currentSegment, ...deadCells].filter(segment => segment.y === newUpY && segment.x === player.x).length === 0) {
+    const upCollision = horizontalLines.filter(line => line.y1 < player.y && line.y1 >= newUpY && line.x1 <= player.x && line.x2 >= player.x);
+    if (upCollision.length === 0) {
+      possibleDirections.push("up");
+    }
   }
 
   // Down
   const newDownY = player.y + cellSize;
-  const downCollision = horizontalLines.filter(line => line.y1 > player.y && line.y1 <= newDownY && line.x1 <= player.x && line.x2 >= player.x);
-  if (downCollision.length === 0) {
-    possibleDirections.push("down");
+  if ([...currentSegment, ...deadCells].filter(segment => segment.y === newDownY && segment.x === player.x).length === 0) {
+    const downCollision = horizontalLines.filter(line => line.y1 > player.y && line.y1 <= newDownY && line.x1 <= player.x && line.x2 >= player.x);
+    if (downCollision.length === 0) {
+      possibleDirections.push("down");
+    }
   }
 
   return possibleDirections;
