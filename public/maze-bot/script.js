@@ -1,5 +1,6 @@
 // Maze Settings!
-const showProcessOfSolvingMaze = true;
+const showProcessOfSolvingMaze = false;
+const mazeFileName = "md-maze.svg";
 
 // Don't touch below :)
 const canvas = document.getElementById("canvas");
@@ -139,7 +140,7 @@ async function init() {
   // Get lines from svg maze
   //
   const regex = /<line x1="(\d+)" y1="(\d+)" x2="(\d+)" y2="(\d+)" \/>/;
-  const svgContent = await (await fetch("maze.svg")).text(); // TODO: Fetch from https://www.mazegenerator.net
+  const svgContent = await (await fetch(mazeFileName)).text(); // TODO: Fetch from https://www.mazegenerator.net
   svgContent.split("\n").forEach(line => {
     const match = line.match(regex);
     if (match) {
