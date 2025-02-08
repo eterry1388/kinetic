@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Animated Maze Generator</title>
+  <title>Maze Game</title>
   <style>
     body {
       margin: 0;
@@ -22,7 +22,7 @@
 <canvas id="mazeCanvas"></canvas>
 <script>
 const settings = {
-  cellSize: 50,
+  cellSize: 100,
   wallWidth: 2,
   backgroundColor: "#fff",
   wallColor: "#000",
@@ -44,6 +44,8 @@ let current; // current cell in the generation process
 let startCell = null;
 let endCell = null;
 let lastStepTime = 0;
+
+let player = { x: 0, y: 0 };
 
 class Cell {
   constructor(i, j) {
@@ -223,6 +225,8 @@ function animate(time) {
     chooseStartEnd();
     drawMaze();
     console.log("Maze generation complete!");
+    player = { x: startCell.i, y: startCell.j };
+    setInterval(gameLoop, 1000 / 60);
   }
 }
 
@@ -232,6 +236,68 @@ function init() {
   endCell = null;
   lastStepTime = 0;
   requestAnimationFrame(animate);
+}
+
+let currentDirection = null;
+
+window.addEventListener("keydown", (event) => {
+  if (event.key === "ArrowUp") {
+    currentDirection = "up";
+  } else if (event.key === "ArrowRight") {
+    currentDirection = "right";
+  } else if (event.key === "ArrowDown") {
+    currentDirection = "down";
+  } else if (event.key === "ArrowLeft") {
+    currentDirection = "left";
+  }
+});
+
+function gameUpdate() {
+  if (player.x === endCell.i && player.y === endCell.j) {
+    alert("You solved the maze!");
+  }
+
+  let currentCell = grid[player.x + player.y * cols];
+
+  if (currentDirection === "up") {
+    if (!currentCell.walls[0] && player.y > 0) {
+      player.y--;
+      currentDirection = null;
+    }
+  }
+  if (currentDirection === "right") {
+    if (!currentCell.walls[1] && player.x < cols - 1) {
+      player.x++;
+      currentDirection = null;
+    }
+  }
+  if (currentDirection === "down") {
+    if (!currentCell.walls[2] && player.y < rows - 1) {
+      player.y++;
+      currentDirection = null;
+    }
+  }
+  if (currentDirection === "left") {
+    if (!currentCell.walls[3] && player.x > 0) {
+      player.x--;
+      currentDirection = null;
+    }
+  }
+}
+
+function gameDraw() {
+  drawMaze();
+  const x = player.x * cellSize;
+  const y = player.y * cellSize;
+  ctx.fillStyle = "blue";
+  ctx.beginPath();
+  ctx.arc(x + cellSize / 2, y + cellSize / 2, cellSize / 3, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function gameLoop() {
+  gameUpdate();
+  gameDraw();
 }
 
 window.addEventListener("resize", init);
