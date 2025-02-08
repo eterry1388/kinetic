@@ -1,6 +1,9 @@
+// Maze Settings!
+const showProcessOfSolvingMaze = true;
+
+// Don't touch below :)
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
-
 const lines = [];
 const horizontalLines = [];
 const verticalLines = [];
@@ -13,6 +16,9 @@ let currentPath = [];
 let possibleDeadSegment = [];
 const deadCells = []
 let reachedEnd = false;
+let bot;
+let botIndex = 0;
+const botPath = [];
 
 function resizeCanvas() {
   canvas.width = window.innerWidth;
@@ -23,12 +29,14 @@ resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
 
 function update() {
-  if (!player) return;
-  if (reachedEnd) return;
+  if (showProcessOfSolvingMaze) solveMaze();
 
-  reachedEnd = movePlayer();
-  if (reachedEnd) {
-    console.log("Solved!");
+  if (bot) {
+    botIndex++;
+    botPath.push({ x: bot.x, y: bot.y });
+    if (botIndex >= currentPath.length) return;
+
+    bot = { ...currentPath[botIndex] };
   }
 }
 
@@ -43,28 +51,61 @@ function draw() {
     ctx.stroke();
   });
 
-  if (deadCells.length > 0) {
-    deadCells.forEach(deadCell => {
-      ctx.fillStyle = "black";
+  if (showProcessOfSolvingMaze && !reachedEnd) {
+    if (deadCells.length > 0) {
+      deadCells.forEach(deadCell => {
+        ctx.fillStyle = "black";
+        ctx.fillRect(
+          deadCell.x - (cellSize / 4),
+          deadCell.y - (cellSize / 4),
+          cellSize / 2,
+          cellSize / 2,
+        );
+      });
+    }
+
+    if (currentPath.length > 0) {
+      ctx.fillStyle = "yellow";
+      currentPath.forEach(currentPathCell => {
+        ctx.fillRect(
+          currentPathCell.x - (cellSize / 4),
+          currentPathCell.y - (cellSize / 4),
+          cellSize / 2,
+          cellSize / 2,
+        );
+      });
+    }
+
+    if (player) {
+      ctx.fillStyle = "blue";
       ctx.fillRect(
-        deadCell.x - (cellSize / 4),
-        deadCell.y - (cellSize / 4),
+        player.x - (cellSize / 4),
+        player.y - (cellSize / 4),
         cellSize / 2,
-        cellSize / 2,
+        cellSize / 2
       );
-    });
+    }
   }
 
-  if (currentPath.length > 0) {
-    ctx.fillStyle = "yellow";
-    currentPath.forEach(currentPathCell => {
-      ctx.fillRect(
-        currentPathCell.x - (cellSize / 4),
-        currentPathCell.y - (cellSize / 4),
-        cellSize / 2,
-        cellSize / 2,
-      );
-    });
+  if (botPath.length > 0) {
+    ctx.strokeStyle = "blue";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(botPath[0].x, botPath[0].y);
+    for (let i = 1; i < botPath.length; i++) {
+      ctx.lineTo(botPath[i].x, botPath[i].y);
+    }
+    ctx.stroke();
+  }
+
+  if (bot) {
+    ctx.fillStyle = "blue";
+    ctx.fillRect(
+      bot.x - (cellSize / 4),
+      bot.y - (cellSize / 4),
+      cellSize / 2,
+      cellSize / 2
+    );
   }
 
   if (startingPoint) {
@@ -82,16 +123,6 @@ function draw() {
     ctx.fillRect(
       endingPoint.x - (cellSize / 4),
       endingPoint.y - (cellSize / 4),
-      cellSize / 2,
-      cellSize / 2
-    );
-  }
-
-  if (player) {
-    ctx.fillStyle = "blue";
-    ctx.fillRect(
-      player.x - (cellSize / 4),
-      player.y - (cellSize / 4),
       cellSize / 2,
       cellSize / 2
     );
@@ -190,6 +221,21 @@ async function init() {
   //
   player = { ...startingPoint };
   currentPath.push({ x: player.x, y: player.y });
+
+  //
+  // Solve the maze if not showing the process
+  //
+  if (!showProcessOfSolvingMaze) while (!reachedEnd) solveMaze();
+}
+
+function solveMaze() {
+  if (!player) return;
+  if (reachedEnd) return;
+
+  reachedEnd = movePlayer();
+  if (reachedEnd) {
+    bot = { ...currentPath[0] };
+  }
 }
 
 function movePlayer() {
